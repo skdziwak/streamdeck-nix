@@ -87,14 +87,12 @@
 
               user = mkOption {
                 type = types.str;
-                default = "streamdeck";
                 description =
                   "User account under which StreamDeck Commander runs";
               };
 
               group = mkOption {
                 type = types.str;
-                default = "streamdeck";
                 description = "Group under which StreamDeck Commander runs";
               };
 
@@ -162,36 +160,7 @@
             };
 
             config = mkIf cfg.enable {
-              # Create user and group if they don't exist
-              users.users = optionalAttrs (cfg.user == "streamdeck") {
-                streamdeck = {
-                  isSystemUser = true;
-                  group = cfg.group;
-                  description = "StreamDeck Commander service user";
-                  extraGroups = [ "input" "plugdev" ];
-                };
-              };
 
-              users.groups =
-                optionalAttrs (cfg.group == "streamdeck") { streamdeck = { }; };
-
-              # udev rules for Stream Deck access
-              services.udev.extraRules = ''
-                # Elgato Stream Deck Original
-                SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0060", MODE="0660", GROUP="${cfg.group}", TAG+="uaccess"
-                # Elgato Stream Deck Original V2
-                SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006d", MODE="0660", GROUP="${cfg.group}", TAG+="uaccess"
-                # Elgato Stream Deck Mini
-                SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0063", MODE="0660", GROUP="${cfg.group}", TAG+="uaccess"
-                # Elgato Stream Deck XL
-                SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="006c", MODE="0660", GROUP="${cfg.group}", TAG+="uaccess"
-                # Elgato Stream Deck MK.2
-                SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0080", MODE="0660", GROUP="${cfg.group}", TAG+="uaccess"
-                # Elgato Stream Deck Pedal
-                SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0086", MODE="0660", GROUP="${cfg.group}", TAG+="uaccess"
-                # Elgato Stream Deck Plus
-                SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0084", MODE="0660", GROUP="${cfg.group}", TAG+="uaccess"
-              '';
 
               systemd.services.streamdeck-commander = {
                 description = "StreamDeck Commander";
@@ -213,17 +182,9 @@
                   ExecStart = "${package}/bin/streamdeck-commander";
                   Restart = "on-failure";
                   RestartSec = "5s";
-
-                  # Security hardening
-                  NoNewPrivileges = true;
-                  PrivateTmp = true;
-                  ProtectSystem = "strict";
-                  ProtectHome = "read-only";
-                  ReadWritePaths = [ ];
-
-                  # Device access
-                  DeviceAllow = [ "/dev/hidraw*" "/dev/usb/*" ];
-                  SupplementaryGroups = [ "input" "plugdev" ];
+                  
+                  # Minimal security - disable most hardening for device access
+                  SupplementaryGroups = [ cfg.group ];
                 };
               };
             };
