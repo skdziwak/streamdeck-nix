@@ -1,6 +1,7 @@
 use crate::config::{Button, Config, Menu};
 use crate::icons;
 use std::{process::Stdio, sync::Arc};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use streamdeck_oxide::{
     generic_array::typenum::{U3, U5},
     plugins::{Plugin, PluginContext, PluginNavigation},
@@ -10,7 +11,7 @@ use streamdeck_oxide::{
     },
 };
 use tokio::process::Command;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 #[derive(Clone)]
 pub struct CommanderPlugin {
@@ -42,23 +43,58 @@ impl CommanderPlugin {
 
         match cmd.spawn() {
             Ok(mut child) => {
+                // Get stdout and stderr handles
+                let stdout = child.stdout.take().expect("Failed to capture stdout");
+                let stderr = child.stderr.take().expect("Failed to capture stderr");
+                
+                // Create async readers
+                let stdout_reader = BufReader::new(stdout);
+                let stderr_reader = BufReader::new(stderr);
+                
+                // Spawn tasks to read stdout and stderr concurrently
+                let stdout_task = {
+                    let cmd_str = format!("{} {:?}", command, args);
+                    tokio::spawn(async move {
+                        let mut lines = stdout_reader.lines();
+                        while let Ok(Some(line)) = lines.next_line().await {
+                            debug!("STDOUT [{}]: {}", cmd_str, line);
+                        }
+                    })
+                };
+                
+                let stderr_task = {
+                    let cmd_str = format!("{} {:?}", command, args);
+                    tokio::spawn(async move {
+                        let mut lines = stderr_reader.lines();
+                        while let Ok(Some(line)) = lines.next_line().await {
+                            debug!("STDERR [{}]: {}", cmd_str, line);
+                        }
+                    })
+                };
+                
+                // Wait for the process to complete
                 match child.wait().await {
                     Ok(status) => {
+                        // Wait for output reading tasks to complete
+                        let _ = tokio::join!(stdout_task, stderr_task);
+                        
                         if status.success() {
-                            info!("Command executed successfully");
+                            info!("Command executed successfully: {} {:?} (exit code: {})", 
+                                  command, args, status.code().unwrap_or(0));
                         } else {
-                            info!("Command exited with status: {}", status);
+                            warn!("Command exited with non-zero status: {} {:?} (exit code: {})", 
+                                  command, args, status.code().unwrap_or(-1));
                         }
                         Ok(())
                     }
                     Err(e) => {
-                        error!("Failed to wait for command: {}", e);
+                        error!("Failed to wait for command: {} {:?} - {}", command, args, e);
                         Err(Box::new(e))
                     }
                 }
             }
             Err(e) => {
-                error!("Failed to execute command: {}", e);
+                error!("Failed to execute command: {} {:?} - {}", command, args, e);
                 Err(Box::new(e))
             }
         }

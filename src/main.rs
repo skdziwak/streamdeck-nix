@@ -10,7 +10,7 @@ use streamdeck_oxide::{
     ExternalTrigger,
 };
 use tracing::{error, info};
-use tracing_subscriber;
+use tracing_subscriber::{self, EnvFilter};
 
 mod button;
 mod config;
@@ -21,7 +21,20 @@ use crate::config::{Config, load_config};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
+    // Configure logging
+    // Default: info level for all crates, debug level for streamdeck_nix
+    // Override with RUST_LOG environment variable, examples:
+    // RUST_LOG=debug                    - Debug level for all crates
+    // RUST_LOG=streamdeck_nix=trace     - Trace level for streamdeck_nix only
+    // RUST_LOG=info,streamdeck_nix=debug- Info for all, debug for streamdeck_nix
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("info,streamdeck_nix=debug"));
+    
+    tracing_subscriber::fmt()
+        .with_env_filter(env_filter)
+        .with_target(true)
+        .with_line_number(true)
+        .init();
     
     info!("Starting StreamDeck Commander");
     

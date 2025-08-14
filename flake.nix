@@ -161,7 +161,6 @@
 
             config = mkIf cfg.enable {
 
-
               systemd.services.streamdeck-commander = {
                 description = "StreamDeck Commander";
                 after = [ "graphical-session.target" ];
@@ -172,7 +171,7 @@
                     cfg.configFile
                   else
                     configFile;
-                  RUST_LOG = "info";
+                  RUST_LOG = "debug";
                 };
 
                 serviceConfig = {
@@ -182,7 +181,7 @@
                   ExecStart = "${package}/bin/streamdeck-commander";
                   Restart = "on-failure";
                   RestartSec = "5s";
-                  
+
                   # Minimal security - disable most hardening for device access
                   SupplementaryGroups = [ cfg.group ];
                 };
