@@ -38,14 +38,11 @@ async fn main() -> Result<()> {
     
     info!("Starting StreamDeck Commander");
     
-    // Load configuration
-    let config_path = std::env::var("STREAMDECK_CONFIG")
-        .unwrap_or_else(|_| "config.yaml".to_string());
-    
-    let config: Config = load_config(&config_path)?;
+    // Load embedded configuration
+    let config: Config = load_config()?;
     let config = Arc::new(config);
     
-    info!("Configuration loaded from {}", config_path);
+    info!("Configuration loaded from embedded config");
     info!("Main menu: {}", config.menu.name);
     info!("Number of buttons: {}", config.menu.buttons.len());
     

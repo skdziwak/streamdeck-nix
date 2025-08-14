@@ -1,7 +1,8 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::Path;
+
+// Embed config.yaml at compile time if it exists
+const EMBEDDED_CONFIG: &str = include_str!("../config.yaml");
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
@@ -43,9 +44,9 @@ fn default_back_name() -> String {
     "Back".to_string()
 }
 
-pub fn load_config<P: AsRef<Path>>(path: P) -> Result<Config> {
-    let contents = fs::read_to_string(path)?;
-    let config: Config = serde_yaml::from_str(&contents)?;
+pub fn load_config() -> Result<Config> {
+    tracing::info!("Using embedded configuration");
+    let config: Config = serde_yaml::from_str(EMBEDDED_CONFIG)?;
     Ok(config)
 }
 

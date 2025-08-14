@@ -27,7 +27,75 @@
           rustc = rustToolchain;
         };
 
-        streamdeck-commander = rustPlatform.buildRustPackage {
+
+        # Default example configuration
+        defaultExampleConfig = {
+          menu = {
+            name = "Main Menu";
+            buttons = [
+              {
+                type = "command";
+                name = "Terminal";
+                command = "gnome-terminal";
+                args = [];
+                icon = "terminal";
+              }
+              {
+                type = "menu";
+                name = "System";
+                icon = "settings";
+                buttons = [
+                  {
+                    type = "command";
+                    name = "Files";
+                    command = "nautilus";
+                    args = [];
+                    icon = "folder";
+                  }
+                  {
+                    type = "command";
+                    name = "System Info";
+                    command = "uname";
+                    args = ["-a"];
+                    icon = "info";
+                  }
+                  {
+                    type = "back";
+                    icon = "arrow_back";
+                  }
+                ];
+              }
+              {
+                type = "menu";
+                name = "Dev";
+                icon = "code";
+                buttons = [
+                  {
+                    type = "command";
+                    name = "Git Status";
+                    command = "git";
+                    args = ["status"];
+                    icon = "sharp:build";
+                  }
+                  {
+                    type = "command";
+                    name = "Docker PS";
+                    command = "docker";
+                    args = ["ps"];
+                    icon = "outlined:computer";
+                  }
+                  {
+                    type = "back";
+                    icon = "arrow_back";
+                  }
+                ];
+              }
+            ];
+          };
+        };
+
+        # Function to create streamdeck-commander with embedded config
+        mkStreamDeckCommander = { embeddedConfig }: rustPlatform.buildRustPackage {
           pname = "streamdeck-commander";
           version = "0.1.0";
 
@@ -37,6 +105,12 @@
 
           inherit buildInputs nativeBuildInputs;
 
+          preBuild = let
+            configYaml = (pkgs.formats.yaml {}).generate "config.yaml" embeddedConfig;
+          in ''
+            cp ${configYaml} config.yaml
+          '';
+
           meta = with pkgs.lib; {
             description = "YAML-configured Stream Deck command launcher";
             homepage = "https://github.com/yourusername/streamdeck-commander";
@@ -44,10 +118,19 @@
             maintainers = [ ];
           };
         };
+
+        # Default package with example configuration
+        streamdeck-commander = mkStreamDeckCommander {
+          embeddedConfig = defaultExampleConfig;
+        };
       in {
         packages = {
           default = streamdeck-commander;
           streamdeck-commander = streamdeck-commander;
+        };
+
+        lib = {
+          inherit mkStreamDeckCommander;
         };
 
         devShells.default = pkgs.mkShell {
@@ -73,14 +156,14 @@
           let
             cfg = config.services.streamdeck-commander;
 
-            configFormat = pkgs.formats.yaml { };
-
-            configFile =
-              configFormat.generate "streamdeck-commander-config.yaml" {
-                menu = cfg.menu;
-              };
-
-            package = self.packages.${pkgs.system}.streamdeck-commander;
+            # Build package with embedded config
+            embeddedConfig = {
+              menu = cfg.menu;
+            };
+            
+            package = self.lib.${pkgs.system}.mkStreamDeckCommander {
+              inherit embeddedConfig;
+            };
           in {
             options.services.streamdeck-commander = {
               enable = mkEnableOption "StreamDeck Commander service";
@@ -168,19 +251,7 @@
                 description = "StreamDeck Commander menu configuration";
               };
 
-              extraConfig = mkOption {
-                type = types.attrs;
-                default = { };
-                description =
-                  "Extra configuration to merge with the generated config";
-              };
 
-              configFile = mkOption {
-                type = types.nullOr types.path;
-                default = null;
-                description =
-                  "Path to a custom configuration file. If set, this overrides the menu option.";
-              };
             };
 
             config = mkIf cfg.enable (let
@@ -188,10 +259,6 @@
               runtimeDir = "/run/user/${uid}";
               
               baseEnvironment = {
-                STREAMDECK_CONFIG = if cfg.configFile != null then
-                  cfg.configFile
-                else
-                  configFile;
                 RUST_LOG = "debug";
               };
               

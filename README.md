@@ -9,7 +9,6 @@ A Nix flake that provides StreamDeck Commander - a customizable command launcher
 - **YAML Configuration**: Define menus and buttons using simple YAML files
 - **Nested Menus**: Organize commands into hierarchical menus
 - **Shell Command Execution**: Execute any shell command with customizable arguments
-- **Multi-Device Support**: Works with various Stream Deck models
 - **Automatic udev Rules**: Proper USB device permissions handled automatically
 
 ## Quick Start
@@ -272,8 +271,6 @@ Icons use Material Design icons from the `md-icons` crate. You can specify icons
 - `tablet` - Tablet device
 - `memory` - RAM/memory chip
 - `storage` - Storage/hard drive
-- `hard_drive` - Hard drive (alias for storage)
-- `cpu` - CPU/processor (alias for memory)
 - `monitor` - Computer monitor
 - `keyboard` - Keyboard
 - `mouse` - Computer mouse
@@ -362,16 +359,7 @@ Icons use Material Design icons from the `md-icons` crate. You can specify icons
 - `favorite` - Heart/favorite
 - `star` - Star rating
 - `label` - Label/tag
-- `tag` - Tag (alias for label)
-
-**Third-party Services:**
-- `docker` - Docker (uses computer icon)
-- `git` - Git version control (uses code icon)
-- `github` - GitHub (uses code icon)
-- `gitlab` - GitLab (uses code icon)
-- `jenkins` - Jenkins CI (uses build icon)
-- `aws` - Amazon Web Services (uses computer icon)
-- `kubernetes` - Kubernetes (uses computer icon)
+- `tag` - Tag
 
 #### Icon Style Support:
 - **All icons** are available in `filled` style
@@ -411,6 +399,29 @@ See `config.yaml` for a comprehensive example that includes:
 - Ensure commands don't require interactive input
 
 ## Development
+
+### Icon System
+
+This project uses a build-time code generation system for Material Design icons:
+
+1. **icons.json** - Contains all icon mappings with:
+   - Icon name to Material Design constant mappings for each style
+
+2. **build.rs** - Reads icons.json and generates Rust code at compile time
+   - Creates optimized match statements for each style
+   - Generates the main `resolve_icon` function
+
+3. **src/icons.rs** - Simply includes the generated code
+
+#### Adding New Icons
+
+To add new icons:
+1. Edit `icons.json` to add new icon mappings
+2. Find the appropriate Material Design constant name from the `md-icons` crate
+3. Add it to the appropriate style section
+4. Run `cargo build` to regenerate the lookup code
+
+Icon names in JSON should be lowercase with underscores (e.g., "arrow_back"). The build script automatically converts to uppercase for constant lookup.
 
 ### Running Tests
 ```bash
