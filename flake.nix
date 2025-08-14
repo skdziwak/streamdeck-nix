@@ -110,8 +110,14 @@
 
               waylandDisplay = mkOption {
                 type = types.str;
-                default = "wayland-0";
+                default = "wayland-1";
                 description = "Wayland display to use";
+              };
+
+              uid = mkOption {
+                type = types.int;
+                default = 1000;
+                description = "User ID for session access (defaults to 1000)";
               };
 
               menu = mkOption {
@@ -178,8 +184,7 @@
             };
 
             config = mkIf cfg.enable (let
-              userInfo = config.users.users.${cfg.user};
-              uid = toString userInfo.uid;
+              uid = toString cfg.uid;
               runtimeDir = "/run/user/${uid}";
               
               baseEnvironment = {
