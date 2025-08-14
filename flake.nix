@@ -96,6 +96,24 @@
                 description = "Group under which StreamDeck Commander runs";
               };
 
+              enableGuiAccess = mkOption {
+                type = types.bool;
+                default = true;
+                description = "Enable access to X11/Wayland sessions for GUI commands";
+              };
+
+              display = mkOption {
+                type = types.str;
+                default = ":0";
+                description = "X11 display to use";
+              };
+
+              waylandDisplay = mkOption {
+                type = types.str;
+                default = "wayland-0";
+                description = "Wayland display to use";
+              };
+
               menu = mkOption {
                 type = types.submodule {
                   options = {
@@ -159,34 +177,64 @@
               };
             };
 
-            config = mkIf cfg.enable {
-
+            config = mkIf cfg.enable (let
+              userInfo = config.users.users.${cfg.user};
+              uid = toString userInfo.uid;
+              runtimeDir = "/run/user/${uid}";
+              
+              baseEnvironment = {
+                STREAMDECK_CONFIG = if cfg.configFile != null then
+                  cfg.configFile
+                else
+                  configFile;
+                RUST_LOG = "debug";
+              };
+              
+              guiEnvironment = optionalAttrs cfg.enableGuiAccess {
+                # X11 session access
+                DISPLAY = cfg.display;
+                # Wayland session access
+                WAYLAND_DISPLAY = cfg.waylandDisplay;
+                XDG_RUNTIME_DIR = runtimeDir;
+                # Authentication and session variables
+                XDG_SESSION_TYPE = "wayland";
+                XDG_CURRENT_DESKTOP = "GNOME";
+                # DBus session access for GUI applications
+                DBUS_SESSION_BUS_ADDRESS = "unix:path=${runtimeDir}/bus";
+              };
+              
+              baseServiceConfig = {
+                Type = "simple";
+                User = cfg.user;
+                Group = cfg.group;
+                ExecStart = "${package}/bin/streamdeck-commander";
+                Restart = "on-failure";
+                RestartSec = "5s";
+                # Minimal security - disable most hardening for device access
+                SupplementaryGroups = [ cfg.group ];
+              };
+              
+              guiServiceConfig = optionalAttrs cfg.enableGuiAccess {
+                # Allow access to user session for GUI applications
+                PrivateNetwork = false;
+                PrivateTmp = false;
+                NoNewPrivileges = false;
+                # Grant access to X11 and Wayland sockets
+                BindReadOnlyPaths = [
+                  "/tmp/.X11-unix"
+                  runtimeDir
+                ];
+              };
+            in {
               systemd.services.streamdeck-commander = {
                 description = "StreamDeck Commander";
                 after = [ "graphical-session.target" ];
                 wantedBy = [ "default.target" ];
 
-                environment = {
-                  STREAMDECK_CONFIG = if cfg.configFile != null then
-                    cfg.configFile
-                  else
-                    configFile;
-                  RUST_LOG = "debug";
-                };
-
-                serviceConfig = {
-                  Type = "simple";
-                  User = cfg.user;
-                  Group = cfg.group;
-                  ExecStart = "${package}/bin/streamdeck-commander";
-                  Restart = "on-failure";
-                  RestartSec = "5s";
-
-                  # Minimal security - disable most hardening for device access
-                  SupplementaryGroups = [ cfg.group ];
-                };
+                environment = baseEnvironment // guiEnvironment;
+                serviceConfig = baseServiceConfig // guiServiceConfig;
               };
-            };
+            });
           };
 
         overlays.default = final: prev: {
