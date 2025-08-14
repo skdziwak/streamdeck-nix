@@ -17,11 +17,17 @@
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
 
-        buildInputs = with pkgs; [ systemd hidapi ];
+        buildInputs = with pkgs; [ systemd hidapi udev ];
 
         nativeBuildInputs = with pkgs; [ pkg-config ];
 
-        streamdeck-commander = pkgs.rustPlatform.buildRustPackage {
+        rustToolchain = pkgs.rust-bin.stable.latest.default;
+        rustPlatform = pkgs.makeRustPlatform {
+          cargo = rustToolchain;
+          rustc = rustToolchain;
+        };
+
+        streamdeck-commander = rustPlatform.buildRustPackage {
           pname = "streamdeck-commander";
           version = "0.1.0";
 
