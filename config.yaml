@@ -1,0 +1,154 @@
+menu:
+  name: "Main Menu"
+  buttons:
+    # System commands
+    - type: command
+      name: "List Files"
+      command: "ls"
+      args: ["-la"]
+      icon: "storage"
+      
+    - type: command
+      name: "System Info"
+      command: "uname"
+      args: ["-a"]
+      icon: "computer"
+      
+    # Git submenu
+    - type: menu
+      name: "Git"
+      icon: "outlined:code"
+      buttons:
+        - type: command
+          name: "Status"
+          command: "git"
+          args: ["status"]
+          icon: "network_check"
+          
+        - type: command
+          name: "Log"
+          command: "git"
+          args: ["log", "--oneline", "-10"]
+          icon: "schedule"
+          
+        - type: command
+          name: "Diff"
+          command: "git"
+          args: ["diff"]
+          icon: "refresh"
+          
+        - type: command
+          name: "Branches"
+          command: "git"
+          args: ["branch", "-v"]
+          icon: "memory"
+          
+        - type: back
+          name: "← Back"
+          icon: "sharp:arrow_back"
+    
+    # Development submenu
+    - type: menu
+      name: "Dev Tools"
+      icon: "build"
+      buttons:
+        - type: command
+          name: "Docker PS"
+          command: "docker"
+          args: ["ps"]
+          icon: "docker"
+          
+        - type: command
+          name: "NPM List"
+          command: "npm"
+          args: ["list", "--depth=0"]
+          icon: "code"
+          
+        - type: command
+          name: "Cargo Check"
+          command: "cargo"
+          args: ["check"]
+          icon: "build"
+          
+        - type: back
+          name: "← Back"
+          icon: "arrow_back"
+    
+    # System monitoring submenu
+    - type: menu
+      name: "Monitor"
+      icon: "two_tone:memory"
+      buttons:
+        - type: command
+          name: "Top"
+          command: "top"
+          args: ["-b", "-n", "1"]
+          icon: "play_arrow"
+          
+        - type: command
+          name: "Disk Usage"
+          command: "df"
+          args: ["-h"]
+          icon: "storage"
+          
+        - type: command
+          name: "Memory"
+          command: "free"
+          args: ["-h"]
+          icon: "memory"
+          
+        - type: command
+          name: "Processes"
+          command: "ps"
+          args: ["aux", "--sort=-cpu"]
+          icon: "computer"
+          
+        - type: back
+          name: "← Back"
+          icon: "arrow_back"
+    
+    # Quick commands
+    - type: command
+      name: "Date/Time"
+      command: "date"
+      args: []
+      icon: "schedule"
+      
+    - type: command
+      name: "IP Address"
+      command: "ip"
+      args: ["addr", "show"]
+      icon: "network_check"
+      
+    - type: command
+      name: "Uptime"
+      command: "uptime"
+      args: []
+      icon: "refresh"
+      
+    # Custom scripts submenu
+    - type: menu
+      name: "Scripts"
+      icon: "terminal"
+      buttons:
+        - type: command
+          name: "Backup"
+          command: "echo"
+          args: ["TODO: Add your backup script here"]
+          icon: "storage"
+          
+        - type: command
+          name: "Deploy"
+          command: "echo"
+          args: ["TODO: Add your deploy script here"]
+          icon: "play_arrow"
+          
+        - type: command
+          name: "Test"
+          command: "echo"
+          args: ["TODO: Add your test script here"]
+          icon: "build"
+          
+        - type: back
+          name: "← Back"
+          icon: "arrow_back"
