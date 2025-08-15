@@ -137,10 +137,13 @@ impl CommanderPlugin {
                             move |_context: PluginContext| {
                                 let cmd = command_clone.clone();
                                 let args = args_clone.clone();
-                                async move {
-                                    Self::execute_command(&cmd, &args).await?;
-                                    Ok(())
-                                }
+                                // Spawn command execution in a separate task to avoid blocking UI
+                                tokio::spawn(async move {
+                                    if let Err(e) = Self::execute_command(&cmd, &args).await {
+                                        error!("Command execution failed: {}", e);
+                                    }
+                                });
+                                async move { Ok(()) }
                             },
                         ),
                     )?;
