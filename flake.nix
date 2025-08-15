@@ -258,6 +258,27 @@
               uid = toString cfg.uid;
               runtimeDir = "/run/user/${uid}";
               
+              # Create a wrapper script that loads Hyprland environment
+              wrapperScript = pkgs.writeShellScript "streamdeck-commander-wrapper" ''
+                # Source Hyprland environment if available
+                HYPRLAND_ENV_FILE="${runtimeDir}/hypr/hyprland-env"
+                if [ -f "$HYPRLAND_ENV_FILE" ]; then
+                  export HYPRLAND_INSTANCE_SIGNATURE=$(cat "$HYPRLAND_ENV_FILE" 2>/dev/null | grep HYPRLAND_INSTANCE_SIGNATURE | cut -d= -f2)
+                fi
+                
+                # Alternative: Try to get it from the Hyprland socket
+                if [ -z "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+                  for sock in ${runtimeDir}/hypr/*/; do
+                    if [ -d "$sock" ]; then
+                      export HYPRLAND_INSTANCE_SIGNATURE=$(basename "$sock")
+                      break
+                    fi
+                  done
+                fi
+                
+                exec ${package}/bin/streamdeck-commander "$@"
+              '';
+              
               baseEnvironment = {
                 RUST_LOG = "debug";
               };
@@ -279,7 +300,7 @@
                 Type = "simple";
                 User = cfg.user;
                 Group = cfg.group;
-                ExecStart = "${package}/bin/streamdeck-commander";
+                ExecStart = "${wrapperScript}";
                 Restart = "on-failure";
                 RestartSec = "5s";
                 # Minimal security - disable most hardening for device access
