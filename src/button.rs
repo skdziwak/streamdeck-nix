@@ -107,8 +107,17 @@ impl CommanderPlugin {
         
         let mut row = 0;
         let mut col = 0;
+        let mut button_index = 0;
         
         for button in &self.menu.buttons {
+            // Reserve position 14 (index 14 = row 2, col 4) for the automatic back button
+            if button_index == 14 {
+                // Skip to next position, leaving space for back button
+                button_index += 1;
+                col = 0;
+                row = 3;
+            }
+            
             if row >= 3 { // Stream Deck has 3 rows
                 break;
             }
@@ -151,37 +160,36 @@ impl CommanderPlugin {
                     )?;
                 }
                 Button::Back { name, icon } => {
-                    if let Some(parent) = &self.parent {
-                        // Create navigation back to parent menu
-                        view.set_navigation(
-                            col,
-                            row,
-                            PluginNavigation::<U5, U3>::new(parent.as_ref().clone()),
-                            name,
-                            icons::resolve_icon(icon.as_ref()),
-                        )?;
-                    } else {
-                        // No parent, just show a disabled button or skip
-                        view.set_button(
-                            col,
-                            row,
-                            ClickButton::new(
-                                name,
-                                icons::resolve_icon(icon.as_ref()),
-                                |_context: PluginContext| async move {
-                                    info!("Back button pressed (no parent to go back to)");
-                                    Ok(())
-                                },
-                            ),
-                        )?;
+                    // Skip user-defined back buttons - we'll add our own automatically
+                    debug!("Skipping user-defined back button at position {},{}", col, row);
+                    button_index += 1;
+                    col += 1;
+                    if col >= 5 {
+                        col = 0;
+                        row += 1;
                     }
+                    continue;
                 }
             }
             
+            button_index += 1;
             col += 1;
             if col >= 5 { // Stream Deck has 5 columns
                 col = 0;
                 row += 1;
+            }
+        }
+        
+        // Always add a back button at position 15 (row 2, col 4) if we have a parent menu
+        if self.parent.is_some() {
+            if let Some(parent) = &self.parent {
+                view.set_navigation(
+                    4, // column 5 (0-indexed)
+                    2, // row 3 (0-indexed)
+                    PluginNavigation::<U5, U3>::new(parent.as_ref().clone()),
+                    "Back",
+                    icons::resolve_icon(Some(&"arrow_back".to_string())),
+                )?;
             }
         }
         
