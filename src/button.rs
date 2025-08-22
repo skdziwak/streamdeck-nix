@@ -1,5 +1,8 @@
 use crate::config::{Button, Config, Menu};
 use crate::icons;
+use crate::toggle_command::execute_toggle_command;
+use crate::toggle_icons::resolve_toggle_icon;
+use crate::toggle_state::ToggleStateManager;
 use std::{process::Stdio, sync::Arc};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use streamdeck_oxide::{
@@ -17,19 +20,38 @@ use tracing::{debug, error, info, warn};
 pub struct CommanderPlugin {
     menu: Menu,
     parent: Option<Box<CommanderPlugin>>,
+    toggle_state_manager: ToggleStateManager,
 }
 
 pub struct CommanderContext {
     pub config: Arc<Config>,
+    pub toggle_state_manager: ToggleStateManager,
 }
 
 impl CommanderPlugin {
     pub fn new(menu: Menu) -> Self {
-        Self { menu, parent: None }
+        Self { 
+            menu, 
+            parent: None, 
+            toggle_state_manager: ToggleStateManager::new(),
+        }
     }
     
     pub fn new_with_parent(menu: Menu, parent: CommanderPlugin) -> Self {
-        Self { menu, parent: Some(Box::new(parent)) }
+        let toggle_state_manager = parent.toggle_state_manager.clone();
+        Self { 
+            menu, 
+            parent: Some(Box::new(parent)),
+            toggle_state_manager,
+        }
+    }
+    
+    pub fn new_with_state_manager(menu: Menu, toggle_state_manager: ToggleStateManager) -> Self {
+        Self {
+            menu,
+            parent: None,
+            toggle_state_manager,
+        }
     }
 
 
@@ -162,7 +184,51 @@ impl CommanderPlugin {
                         icons::resolve_icon(icon.as_ref()),
                     )?;
                 }
-                Button::Back { name, icon } => {
+                Button::Toggle { name, mode, probe_command, probe_args, .. } => {
+                    let button_name = name.clone();
+                    let toggle_mode = mode.clone();
+                    let probe_cmd = probe_command.clone();
+                    let probe_args_clone = probe_args.clone();
+                    let state_manager = self.toggle_state_manager.clone();
+                    let button_clone = button.clone();
+                    let state_manager_for_icon = self.toggle_state_manager.clone();
+                    
+                    view.set_button(
+                        col,
+                        row,
+                        ClickButton::new(
+                            &button_name.clone(),
+                            resolve_toggle_icon(&button_clone, &state_manager_for_icon),
+                            move |_context: PluginContext| {
+                                let name = button_name.clone();
+                                let mode = toggle_mode.clone();
+                                let probe = probe_cmd.clone();
+                                let probe_args = probe_args_clone.clone();
+                                let state_mgr = state_manager.clone();
+                                
+                                // Spawn toggle execution in a separate task to avoid blocking UI
+                                tokio::spawn(async move {
+                                    info!("Toggle button '{}' clicked", name);
+                                    let result = execute_toggle_command(
+                                        &name,
+                                        &mode,
+                                        probe.as_deref(),
+                                        &probe_args,
+                                        &state_mgr,
+                                    ).await;
+                                    
+                                    if result.success {
+                                        info!("Toggle '{}' executed successfully, new state: {:?}", name, result.new_state);
+                                    } else {
+                                        error!("Toggle '{}' execution failed: {:?}", name, result.error_message);
+                                    }
+                                });
+                                async move { Ok(()) }
+                            },
+                        ),
+                    )?;
+                }
+                Button::Back { name: _, icon: _ } => {
                     // Skip user-defined back buttons - we'll add our own automatically
                     debug!("Skipping user-defined back button at position {},{}", col, row);
                     button_index += 1;

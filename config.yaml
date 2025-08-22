@@ -1,0 +1,143 @@
+menu:
+  name: "StreamDeck Commander with Toggles"
+  buttons:
+    # Standard command button
+    - type: command
+      name: "Terminal"
+      command: "gnome-terminal"
+      icon: "terminal"
+    
+    # Single-command toggle (WiFi example)
+    - type: toggle
+      name: "WiFi"
+      mode: single
+      command: "nmcli"
+      args: ["radio", "wifi"]
+      probe_command: "nmcli"
+      probe_args: ["radio", "wifi"]
+      on_icon: "wifi"
+      off_icon: "wifi_off"
+      icon: "settings"
+    
+    # Separate-command toggle (Bluetooth example)
+    - type: toggle
+      name: "Bluetooth"
+      mode: separate
+      on_command: "bluetoothctl"
+      on_args: ["power", "on"]
+      off_command: "bluetoothctl"
+      off_args: ["power", "off"]
+      probe_command: "bluetoothctl"
+      probe_args: ["show"]
+      on_icon: "bluetooth"
+      off_icon: "bluetooth_disabled"
+    
+    # VPN toggle with systemctl
+    - type: toggle
+      name: "VPN"
+      mode: separate
+      on_command: "systemctl"
+      on_args: ["start", "openvpn-client@config"]
+      off_command: "systemctl"
+      off_args: ["stop", "openvpn-client@config"]
+      probe_command: "systemctl"
+      probe_args: ["is-active", "openvpn-client@config"]
+      on_icon: "vpn_key"
+      off_icon: "vpn_key_off"
+    
+    # Audio toggle example
+    - type: toggle
+      name: "Microphone"
+      mode: separate
+      on_command: "pactl"
+      on_args: ["set-source-mute", "@DEFAULT_SOURCE@", "0"]
+      off_command: "pactl"
+      off_args: ["set-source-mute", "@DEFAULT_SOURCE@", "1"]
+      probe_command: "pactl"
+      probe_args: ["get-source-mute", "@DEFAULT_SOURCE@"]
+      on_icon: "mic"
+      off_icon: "mic_off"
+    
+    # System menu with nested toggles
+    - type: menu
+      name: "System Controls"
+      icon: "settings"
+      buttons:
+        - type: toggle
+          name: "Night Light"
+          mode: single
+          command: "gsettings"
+          args: ["set", "org.gnome.settings-daemon.plugins.color", "night-light-enabled", "$(if gsettings get org.gnome.settings-daemon.plugins.color night-light-enabled | grep -q true; then echo false; else echo true; fi)"]
+          probe_command: "gsettings"
+          probe_args: ["get", "org.gnome.settings-daemon.plugins.color", "night-light-enabled"]
+          on_icon: "brightness_2"
+          off_icon: "brightness_high"
+        
+        - type: toggle
+          name: "Do Not Disturb"
+          mode: separate
+          on_command: "gsettings"
+          on_args: ["set", "org.gnome.desktop.notifications", "show-banners", "false"]
+          off_command: "gsettings"
+          off_args: ["set", "org.gnome.desktop.notifications", "show-banners", "true"]
+          probe_command: "gsettings"
+          probe_args: ["get", "org.gnome.desktop.notifications", "show-banners"]
+          on_icon: "notifications_off"
+          off_icon: "notifications"
+        
+        - type: back
+          name: "Back"
+          icon: "arrow_back"
+    
+    # Development shortcuts menu
+    - type: menu
+      name: "Dev Tools"
+      icon: "code"
+      buttons:
+        - type: command
+          name: "VS Code"
+          command: "code"
+          icon: "code"
+        
+        - type: toggle
+          name: "Docker Service"
+          mode: separate
+          on_command: "systemctl"
+          on_args: ["start", "docker"]
+          off_command: "systemctl"
+          off_args: ["stop", "docker"]
+          probe_command: "systemctl"
+          probe_args: ["is-active", "docker"]
+          on_icon: "play_arrow"
+          off_icon: "stop"
+        
+        - type: toggle
+          name: "PostgreSQL"
+          mode: separate
+          on_command: "systemctl"
+          on_args: ["start", "postgresql"]
+          off_command: "systemctl"
+          off_args: ["stop", "postgresql"]
+          probe_command: "systemctl"
+          probe_args: ["is-active", "postgresql"]
+          on_icon: "storage"
+          off_icon: "storage"
+        
+        - type: back
+    
+    # Standard command buttons
+    - type: command
+      name: "File Manager"
+      command: "nautilus"
+      icon: "folder"
+    
+    - type: command
+      name: "Screenshot"
+      command: "gnome-screenshot"
+      args: ["-a"]
+      icon: "screenshot"
+    
+    - type: command
+      name: "Calculator"
+      command: "gnome-calculator"
+      icon: "calculate"

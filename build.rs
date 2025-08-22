@@ -38,10 +38,45 @@ enum Button {
         #[serde(default)]
         icon: Option<String>,
     },
+    Toggle {
+        name: String,
+        #[serde(flatten)]
+        mode: ToggleMode,
+        #[serde(default)]
+        probe_command: Option<String>,
+        #[serde(default)]
+        probe_args: Vec<String>,
+        #[serde(default)]
+        on_icon: Option<String>,
+        #[serde(default)]
+        off_icon: Option<String>,
+        #[serde(default)]
+        icon: Option<String>, // Fallback icon when state is unknown
+    },
 }
 
 fn default_back_name() -> String {
     "Back".to_string()
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+enum ToggleMode {
+    /// Single command that toggles between states
+    Single {
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+    },
+    /// Separate commands for on and off states
+    Separate {
+        on_command: String,
+        #[serde(default)]
+        on_args: Vec<String>,
+        off_command: String,
+        #[serde(default)]
+        off_args: Vec<String>,
+    },
 }
 
 #[derive(Debug)]
@@ -64,6 +99,17 @@ fn extract_icons_from_buttons(buttons: &[Button], icons: &mut Vec<String>) {
             | Button::Menu { icon, .. }
             | Button::Back { icon, .. } => {
                 if let Some(icon_name) = icon {
+                    icons.push(icon_name.clone());
+                }
+            }
+            Button::Toggle { icon, on_icon, off_icon, .. } => {
+                if let Some(icon_name) = icon {
+                    icons.push(icon_name.clone());
+                }
+                if let Some(icon_name) = on_icon {
+                    icons.push(icon_name.clone());
+                }
+                if let Some(icon_name) = off_icon {
                     icons.push(icon_name.clone());
                 }
             }
@@ -128,7 +174,10 @@ fn main() {
     }
 
     // Add default icons to ensure they're always available
-    let default_icons = vec!["terminal", "home", "arrow_back", "settings"];
+    let default_icons = vec![
+        "terminal", "home", "arrow_back", "settings",
+        "toggle_on", "toggle_off", "help", "wifi", "wifi_off"
+    ];
     for icon in default_icons {
         icons_by_style
             .entry("filled".to_string())

@@ -15,9 +15,14 @@ use tracing_subscriber::{self, EnvFilter};
 mod button;
 mod config;
 mod icons;
+mod probe;
+mod toggle_command;
+mod toggle_icons;
+mod toggle_state;
 
 use crate::button::{CommanderContext, CommanderPlugin};
 use crate::config::{Config, load_config};
+use crate::toggle_state::ToggleStateManager;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -80,8 +85,10 @@ async fn main() -> Result<()> {
     let theme = Theme::light();
     
     // Create plugin context
+    let toggle_state_manager = ToggleStateManager::new();
     let commander_context = CommanderContext {
         config: config.clone(),
+        toggle_state_manager: toggle_state_manager.clone(),
     };
     
     let context = PluginContext::new(BTreeMap::from([
@@ -93,7 +100,7 @@ async fn main() -> Result<()> {
     
     // Send initial navigation to main menu
     sender.send(ExternalTrigger::new(
-        PluginNavigation::<U5, U3>::new(CommanderPlugin::new(config.menu.clone())),
+        PluginNavigation::<U5, U3>::new(CommanderPlugin::new_with_state_manager(config.menu.clone(), toggle_state_manager)),
         true
     )).await?;
     
