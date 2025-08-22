@@ -198,6 +198,7 @@ impl CommanderPlugin {
                     let menu_clone = self.menu.clone();
                     let toggle_state_mgr_clone = self.toggle_state_manager.clone();
                     
+                    
                     view.set_button(
                         col,
                         row,
@@ -290,6 +291,59 @@ impl CommanderPlugin {
         
         Ok(Box::new(view))
     }
+    
+    /// Probe initial states for all toggle buttons and trigger a refresh if needed
+    async fn probe_initial_toggle_states(&self, context: &PluginContext) {
+        let mut needs_refresh = false;
+        
+        for button in &self.menu.buttons {
+            if let Button::Toggle { name, probe_command, probe_args, .. } = button {
+                if let Some(probe_cmd) = probe_command {
+                    let probe_result = crate::probe::execute_probe_command(
+                        probe_cmd,
+                        probe_args,
+                        name,
+                    ).await;
+                    
+                    let initial_state = if probe_result.is_success() {
+                        crate::toggle_state::ToggleState::On
+                    } else {
+                        crate::toggle_state::ToggleState::Off
+                    };
+                    
+                    // Check if this changes the state from Unknown to a known state
+                    let old_state = self.toggle_state_manager.get_state(name);
+                    if matches!(old_state, crate::toggle_state::ToggleState::Unknown) {
+                        self.toggle_state_manager.set_state(name, initial_state);
+                        debug!("Initial state for '{}': {:?}", name, initial_state);
+                        needs_refresh = true;
+                    }
+                }
+            }
+        }
+        
+        // If any state changed from Unknown, trigger a view refresh
+        if needs_refresh {
+            if let Some(commander_ctx) = context.get_context::<CommanderContext>().await {
+                if let Some(sender) = &commander_ctx.navigation_sender {
+                    info!("Refreshing view after initial state probing");
+                    let refreshed_plugin = CommanderPlugin::new_with_state_manager(
+                        self.menu.clone(), 
+                        self.toggle_state_manager.clone()
+                    );
+                    let refresh_trigger = ExternalTrigger::new(
+                        PluginNavigation::<U5, U3>::new(refreshed_plugin),
+                        false
+                    );
+                    if let Err(e) = sender.send(refresh_trigger).await {
+                        error!("Failed to send initial state refresh trigger: {}", e);
+                    }
+                } else {
+                    warn!("No navigation sender available for initial state refresh");
+                }
+            }
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -298,8 +352,12 @@ impl Plugin<U5, U3> for CommanderPlugin {
         "StreamDeck Commander"
     }
 
-    async fn get_view(&self, _context: PluginContext) -> Result<Box<dyn View<U5, U3, PluginContext, PluginNavigation<U5, U3>>>, Box<dyn std::error::Error>> {
+    async fn get_view(&self, context: PluginContext) -> Result<Box<dyn View<U5, U3, PluginContext, PluginNavigation<U5, U3>>>, Box<dyn std::error::Error>> {
         info!("Creating view for menu: {}", self.menu.name);
+        
+        // Probe initial states for all toggle buttons in this menu
+        self.probe_initial_toggle_states(&context).await;
+        
         self.create_view_from_menu()
     }
 }
