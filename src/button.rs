@@ -8,9 +8,10 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use streamdeck_oxide::{
     generic_array::typenum::{U3, U5},
     plugins::{Plugin, PluginContext, PluginNavigation},
+    ExternalTrigger,
     view::{
         customizable::{ClickButton, CustomizableView},
-        View,
+        View, 
     },
 };
 use tokio::process::Command;
@@ -26,7 +27,9 @@ pub struct CommanderPlugin {
 pub struct CommanderContext {
     pub config: Arc<Config>,
     pub toggle_state_manager: ToggleStateManager,
+    pub navigation_sender: Option<tokio::sync::mpsc::Sender<ExternalTrigger<PluginNavigation<U5, U3>, U5, U3, PluginContext>>>,
 }
+
 
 impl CommanderPlugin {
     pub fn new(menu: Menu) -> Self {
@@ -192,6 +195,8 @@ impl CommanderPlugin {
                     let state_manager = self.toggle_state_manager.clone();
                     let button_clone = button.clone();
                     let state_manager_for_icon = self.toggle_state_manager.clone();
+                    let menu_clone = self.menu.clone();
+                    let toggle_state_mgr_clone = self.toggle_state_manager.clone();
                     
                     view.set_button(
                         col,
@@ -199,12 +204,14 @@ impl CommanderPlugin {
                         ClickButton::new(
                             &button_name.clone(),
                             resolve_toggle_icon(&button_clone, &state_manager_for_icon),
-                            move |_context: PluginContext| {
+                            move |context: PluginContext| {
                                 let name = button_name.clone();
                                 let mode = toggle_mode.clone();
                                 let probe = probe_cmd.clone();
                                 let probe_args = probe_args_clone.clone();
                                 let state_mgr = state_manager.clone();
+                                let menu_for_refresh = menu_clone.clone();
+                                let toggle_state_mgr_for_refresh = toggle_state_mgr_clone.clone();
                                 
                                 // Spawn toggle execution in a separate task to avoid blocking UI
                                 tokio::spawn(async move {
@@ -219,6 +226,25 @@ impl CommanderPlugin {
                                     
                                     if result.success {
                                         info!("Toggle '{}' executed successfully, new state: {:?}", name, result.new_state);
+                                        
+                                        // Get the navigation sender from context and refresh the view
+                                        if let Some(commander_ctx) = context.get_context::<CommanderContext>().await {
+                                            if let Some(sender) = &commander_ctx.navigation_sender {
+                                                info!("Refreshing view to update toggle icon for '{}'", name);
+                                                let refreshed_plugin = CommanderPlugin::new_with_state_manager(menu_for_refresh, toggle_state_mgr_for_refresh);
+                                                let refresh_trigger = ExternalTrigger::new(
+                                                    PluginNavigation::<U5, U3>::new(refreshed_plugin),
+                                                    false
+                                                );
+                                                if let Err(e) = sender.send(refresh_trigger).await {
+                                                    error!("Failed to send refresh trigger: {}", e);
+                                                }
+                                            } else {
+                                                warn!("No navigation sender available for view refresh");
+                                            }
+                                        } else {
+                                            error!("Failed to get CommanderContext from plugin context");
+                                        }
                                     } else {
                                         error!("Toggle '{}' execution failed: {:?}", name, result.error_message);
                                     }

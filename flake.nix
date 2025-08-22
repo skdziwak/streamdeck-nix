@@ -41,6 +41,32 @@
                 icon = "terminal";
               }
               {
+                type = "toggle";
+                name = "Demo Toggle";
+                mode = "separate";
+                on_command = "touch";
+                on_args = ["/tmp/streamdeck-demo-toggle"];
+                off_command = "rm";
+                off_args = ["-f" "/tmp/streamdeck-demo-toggle"];
+                probe_command = "test";
+                probe_args = ["-f" "/tmp/streamdeck-demo-toggle"];
+                on_icon = "home";
+                off_icon = "settings";
+              }
+              {
+                type = "toggle";
+                name = "Another Toggle";
+                mode = "separate";
+                on_command = "mkdir";
+                on_args = ["-p" "/tmp/streamdeck-demo-dir"];
+                off_command = "rmdir";
+                off_args = ["/tmp/streamdeck-demo-dir"];
+                probe_command = "test";
+                probe_args = ["-d" "/tmp/streamdeck-demo-dir"];
+                on_icon = "terminal";
+                off_icon = "arrow_back";
+              }
+              {
                 type = "menu";
                 name = "System";
                 icon = "settings";
@@ -60,6 +86,19 @@
                     icon = "info";
                   }
                   {
+                    type = "toggle";
+                    name = "Debug Mode";
+                    mode = "separate";
+                    on_command = "touch";
+                    on_args = ["/tmp/streamdeck-debug-mode"];
+                    off_command = "rm";
+                    off_args = ["-f" "/tmp/streamdeck-debug-mode"];
+                    probe_command = "test";
+                    probe_args = ["-f" "/tmp/streamdeck-debug-mode"];
+                    on_icon = "help";
+                    off_icon = "settings";
+                  }
+                  {
                     type = "back";
                     icon = "arrow_back";
                   }
@@ -76,6 +115,19 @@
                     command = "git";
                     args = ["status"];
                     icon = "sharp:build";
+                  }
+                  {
+                    type = "toggle";
+                    name = "Dev Flag";
+                    mode = "separate";
+                    on_command = "touch";
+                    on_args = ["/tmp/streamdeck-dev-flag"];
+                    off_command = "rm";
+                    off_args = ["-f" "/tmp/streamdeck-dev-flag"];
+                    probe_command = "test";
+                    probe_args = ["-f" "/tmp/streamdeck-dev-flag"];
+                    on_icon = "code";
+                    off_icon = "outlined:computer";
                   }
                   {
                     type = "command";

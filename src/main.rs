@@ -84,19 +84,20 @@ async fn main() -> Result<()> {
     let render_config = RenderConfig::default();
     let theme = Theme::light();
     
+    // Create external trigger channel
+    let (sender, receiver) = tokio::sync::mpsc::channel::<ExternalTrigger<PluginNavigation<U5, U3>, U5, U3, PluginContext>>(1);
+    
     // Create plugin context
     let toggle_state_manager = ToggleStateManager::new();
     let commander_context = CommanderContext {
         config: config.clone(),
         toggle_state_manager: toggle_state_manager.clone(),
+        navigation_sender: Some(sender.clone()),
     };
     
     let context = PluginContext::new(BTreeMap::from([
         (TypeId::of::<CommanderContext>(), Box::new(Arc::new(commander_context)) as Box<dyn Any + Send + Sync>)
     ]));
-    
-    // Create external trigger channel
-    let (sender, receiver) = tokio::sync::mpsc::channel::<ExternalTrigger<PluginNavigation<U5, U3>, U5, U3, PluginContext>>(1);
     
     // Send initial navigation to main menu
     sender.send(ExternalTrigger::new(
